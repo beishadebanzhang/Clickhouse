@@ -1,0 +1,45 @@
+整型:
+    Int8(byte)/16(short)/32(int)/64(long)
+    UInt8/16/32/64
+    使用场景: 个数、数量、也可以存储整型id
+浮点型:
+    Float32(float)/64(double)
+    尽可能用整数形式存储数据, 如将固定精度的数字转换为整数值, 浮点型计算可能引起四舍五入的误差
+    使用场景: 一般数据值比较小, 不涉及大量的统计计算, 精度要求不高时, 比如保存商品的重量
+布尔型:
+    使用UInt8, 取值限制为0/1, 没有单独的类型
+Decimal型:
+    有符号的浮点数, 可在加减和乘法运算中保持精度, 对于除法, 最低有效数字会被丢弃(不进行四舍五入)
+    Decimal32(s): 相当于Decimal(9-s, s), 有效位数1-9
+    Decimal64(s): 相当于Decimal(18-s, s), 有效位数1-18
+    Decimal128(s): 相当于Decimal(36-s, s), 有效位数1-36
+    --> s标识小数位
+    使用场景: 一般金额字段, 汇率、利率等字段为了保证精度, 使用Decimal进行存储
+ 字符串:
+    String
+    FixedString(N):
+        长度不够时在字符串末尾添加空字节填充
+        超长时则报错
+ 枚举类型:
+    包括Enum8和Enum16, 保存 String = Integer 的对应关系
+    示例:
+        create table t_enum{
+            x Enum8('hello'=1, 'world'=2)
+        } engine = TinyLog
+        --> x列只能存储类型定义中列出的值'hello'/'world'
+        --> insert into t_enum values ('hello'), ('world')
+        --> select CAST(x, 'Int8') from t_enum; // 获取行对应的数值
+ 时间类型:
+    用两个字节存储, 表示从1970-01-01(无符号)到当前日期值
+    Date:
+        接收年-月-日的字符串, 比如'2019-12-16'
+    Datetime
+        接收年-月-日 时:分:秒的字符串
+    Datetime64
+        接收年-月-日 时:分:秒.亚秒
+ 数组:
+    Array(T):
+        由T元素组成的数组
+        T可以是任意类型, 包括数组, 但ck对多维数组支持有限, 如不能再MergeTree表中存多维数组
+    创建:
+        select array(1, 2) as x, toTypeName(x);

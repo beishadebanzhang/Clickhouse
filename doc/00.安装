@@ -1,0 +1,55 @@
+准备工作：
+    关闭防火墙/配置开放端口
+        查看防火墙状态 systemctl status firewalld.service
+        关闭防火墙 systemctl stop firewalld.service命令
+        永久关闭防火墙 systemctl disable firewalld.service
+    CentOS取消打开文件限制 (修改open files和max_user_processes)
+        查看修改的各项限制 ulimit -a
+        修改：
+            sudo vim /etc/security/limits.conf
+                *(所有用户组, 用户名@用户组指定) soft(软限制) nofile(打开文件数) 65536
+                * hard(硬限制) nofile 65536
+                * soft nproc(打开进程数) 131072
+                * hard nproc 131072
+            sudo vim /etc/security/limits.d/20-nproc.conf(同上, 可覆盖上面的配置)
+            重新登录使配置生效
+    安装依赖:
+        sudo yum install -y libtool
+        sudo yum install -y *unixODBC*
+    CentOS取消SELINUX:
+        查看状态 getenforce
+        修改/etc/selinux/config中的SELINUX=disabled
+            sudo vim /etc/selinux/config
+                SELINUX=disabled
+        重启服务器生效
+        临时关闭(无需重启) setenforce 0(关闭状态开启只能重启服务器)
+单机安装：
+    安装包: https://pan.baidu.com/disk/main?_at_=1664673888696#/index?category=all&path=%2F%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%2FDB%2Fclickhouse
+    关键版本:
+        20.5 支持final
+        20.6.3 支持explain
+        20.8 新引擎, 可实时同步mysql
+    上传文件
+        cd /opt/software
+        mkdir clickhouse
+    安装 sudo rpm -ivh *.rpm
+    配置文件路径:
+        rpm安装方式,
+            配置文件位于/etc/clickhouse-client|server下 --> etc用于放置配置文件
+            数据存放路径 /var/lib/clickhouse下
+            日志 /var/log/clickhouse
+            命令 /usr/bin/sbin或/usr/bin/sbin/local
+        配置文件
+            clickhouse-server:
+                config.xml 通用服务端配置
+                    开放访问(默认只有本机可以访问) 打开注释：listener_host :: -->wq!强制保存退出
+                    配置数据存放路径 <path>...</path>
+                    日志路径 <log>...</log> <errorLog> <level>--> 日志级别
+                users.xml 参数配置, 如CPU、内存等
+    查看状态:
+        sudo systemctl status clickhouse-server
+        sudo clickhouse status
+    重启服务:
+        sudo clickhouse restart
+    关闭开机自启:
+        sudo systemctl disable clickhouse-server

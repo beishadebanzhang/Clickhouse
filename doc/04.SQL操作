@@ -1,0 +1,33 @@
+Insert:
+    常规:
+        insert into table1 values(...);
+    表到表:
+        insert into target select a, b, c from origin;
+Update和Delete:
+    update和delete这类操作, 被称为Mutation查询, 可以看做alter的一种
+    和oltp数据库不一样, Mutation是一种很重的操作, 且不支持事务
+    每次修改或删除都会导致放弃目标数据的原有分区, 重建新分区, 因此尽量做到
+   批量变更, 不要进行频繁小数据的操作
+    删除: alter table table1 delete where sku_id = 'sku_001';
+    修改: alter table table1 update total_amount=toDecimal32(2000.00, 2) where id = 2;
+    Mutation语句分两步执行, 同步执行部分为, 新增数据新增分区, 并把旧分区打上逻辑上的失效标记
+   直到触发合并时, 才会删除旧数据释放磁盘空间, 一般这样的功能由管理员完成
+    实际处理更新与删除:
+        更新为新增, 添加一个version字段, 查询时取version最大的数据
+        删除为逻辑删除, 查询时过滤是否删除字段sign=0
+查询:
+    支持子查询
+    支持CTE
+    支持各种join, 但join操作无法使用缓存, 所以即使是两条相同的join语句, 也会视为新SQL
+    窗口函数(官方测试中...)
+    不支持自定义函数
+    group by增加rollup(上卷)、with cube(多维分析)、with total(总计)用来计算小计和总计
+        rollup: 维度a、b, group by a | a,b | null
+        with cube(多维分析): 维度a、b, group by a | b | a,b | null
+        with total(总计): 维度a、b, group by a,b | null
+alter操作:
+    新增: alter table t1 add column c1 String after c2;
+    修改: alter table t1 modify column c1 String;
+    删除: alter table t1 drop column c1;
+导出数据:
+    建议使用DBeaver等客户端工具进行导出

@@ -1,0 +1,115 @@
+表引擎的使用:
+    数据存放位置: /var/lib/clickhouse/data
+    建表语句: /var/lib/clickhouse/metadata
+TinyLog:
+    以列文件的形式保存在磁盘上, 不支持索引, 没有并发控制, 一般保存少量数据的小表
+    生产环境上左右有限, 用于平时练习测试
+    create table t_tinylog(id String, name String) engine=TinyLog
+Memory:
+    内存引擎, 数据以未压缩的原始形式直接保存在内存当中, 服务器重启数据就会消失
+    读写操作不会互相阻塞, 不支持索引
+    简单查询下有非常高的性能表现, 超过10G/s
+    一般使用场景很少, 除了测试, 还用在需要非常高性能, 同时数据量不太大的场景(上限1亿行)
+MergeTree:
+    合并树, 支持索引和分区,
+    create table t_order_mt(
+        id UInt32,
+        sku_id String,
+        total_amount Decimal(16, 2)
+        create_time Datetime
+    ) engine = MergeTree
+    partition by toYYYYMMDD(create_time)
+    primary key(id)
+    order by(id, sku_id)
+    ;
+    partition by:
+        分区, 用于降低扫描范围, 优化查询速度, 不填默认只有一个分区
+        分区目录:
+            MergeTree是以 列文件+索引文件+表定义文件 组成, 但若设定了分区,
+           这些文件就会保存到不同的分区目录中
+            包含内容:
+                data.bin 存放数据
+                count.txt 数据量统计
+                primary.idx 主键索引
+            分区目录名: 分区值_最小分区块编号_最大分区块编号_合并层级
+                分区值 partitionId
+                    数据分区规则由分区ID决定, 分区ID由Partition By分区键决定
+                   根据分区键字段类型, ID生成规则可分为:
+                    未定义分区键
+                        没有定义分区键, 默认生成一个目录名为all的数据分区, 所有数据均存放在all目录下
+                    整型分区键
+                        分区键为整型, 那么直接用该整型值的字符串形式作为分区ID
+                    日期类分区键
+                        分区键为日期类型, 或者可以转化成日期类型
+                    其他类型分区键
+                        String、Float类型等, 通过128位的Hash算法取其Hash值作为分区ID
+                MinBlockNum:
+                    最小分区块编号, 自增类型, 从1开始向上递增, 每产生一个新的目录分区就向上递增
+                MaxBlockNum:
+                    最大分区块编号, 新创建的分区MinBlockNum等于MaxBlockNum的编号
+                Level:
+                    合并的层级, 被合并的次数, 合并次数越多, 层级值越大
+        并行:
+            分区后, 面对涉及跨分区的查询统计, Clickhouse会以分区为单位并行处理
+        数据写入与分区合并:
+            任何一个批次的数据写入, 都会产生一个临时分区, 不会纳入任何一个已有分区
+            写入后的某个时刻, 大约(10-15分钟后), ck会自动执行合并操作(可手动optimize)
+           把临时分区数据, 合并到已有分区中
+            optimize table tableName final;
+    primary key 主键(可选):
+        只提供了数据的一级索引, 但却不是唯一约束, 存在主键相同的数据
+        主键设定的主要依据是where中的条件, 根据条件对主键进行某种形式的二分查找, 能够
+       定位到对应的index granularity, 避免了全表扫描
+        index granularity:
+            索引粒度, 指在稀疏索引中两个相邻索引对应数据的间隔, mergeTree默认8192, 不建议修改
+    order by (必选):
+        设定了分区内的数据按照哪些字段顺序进行有序保存
+        是mergeTree中唯一必填项, 主键必须是order by字段的前缀字段
+    二级索引:
+        index indexName1 total_amount type minmax granularity 5
+        granularity n 是设定二级索引对一级索引粒度的粒度
+    数据TTL(数据过期):
+        列级别:
+            ...
+            total_amount Decimal(16, 2) TTL create_time + interval 10 SECOND,
+            create_time Datetime
+            ...
+        表级别:
+            alter table t_order_mt modify ttl create_time + interval 10 SECOND;
+            涉及判断的字段必须是Date或者Datetime类型, 推荐使用分区的日期字段
+ReplacingMergeTree:
+    MergeTree的变种, 多了一个去重功能, 根据主键在分区内进行去重
+    去重时机:
+        数据的去重只会在合并的过程中出现, 合并在未知时间在后台进行
+    去重范围:
+        如果表进行了分区, 去重只会在分区内部进行去重, 不能跨分区进行去重
+    示例：
+        create table t_test...
+            create_time Datetime
+            ...
+        ) engine=ReplacingMergeTree(create_time)
+        ...
+        primary key(id)
+        ...
+        ReplacingMergeTree填入参数为版本字段, 重复数据保留版本字段值最大的
+        如果不填版本字段, 默认按照插入顺序保留最后一条
+    如何保证最终一致性:
+        聚合前手动optimize --> 合并消耗性能, 且期间ck不能处理其他业务
+        自己去重
+        final
+SummingMergeTree:
+    预聚合的引擎, 适用于不查询明细, 只关心以维度进行汇总聚合结果的场景
+    示例:
+        create...
+            total_amount Decimal(16, 2)
+            ...
+        )engine=SummingMergeTree(total_amount)
+        ...
+        order by(id, sku_id)
+    结论:
+        以SummingMergeTree参数最为汇总数据列
+        可以填多列必填数字列, 如果不填, 默认所有非维度列且为数字列的字段为汇总数据
+        以order by的列为准, 作为维度列
+        其他列按插入顺序, 保留第一行
+        不在一个分区的数据不会被聚合
+        未被合并的数据, 不会被聚合

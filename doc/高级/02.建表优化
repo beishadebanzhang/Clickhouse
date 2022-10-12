@@ -1,0 +1,24 @@
+建表优化:
+    数据类型
+        时间字段的类型
+            建表时能使用数值型或日期类型, 就不要用String
+            DateTime底层会存储为时间戳Long类型, 但不建议存Long
+            因为Datetime不需要经过函数转换处理, 执行效率高, 可读性好
+        空值存储类型
+            create table(x Int8, y Nullable(Int8)) engine=TinyLog;
+            select x+y from t_null;
+            不建议使用Nullable类型:
+                存储Nullable列时需要创建一个额外的文件来存储Null标记
+            	Nullable列无法被索引
+                使用字段默认值为空, 或指定一个在业务中无意义的值代替
+    分区和索引
+        分区: partition by 单表一亿条数据, 分区大小控制在10-30个为最佳
+        索引: order by -- 排序列就是索引列
+            查询条件中经常被用来当筛选条件的属性
+            复合索引, 高级列在前、查询频率大的列在前
+            基数特别大的列不适合做索引列, 比如用户id, 筛选后的数据满足在百万以内为最佳
+                --> userId用intHash32(UserID)做索引列
+    表参数:
+        index_granularity用于控制索引粒度, 默认8192, 不建议修改
+        ttl 数据生存时间
+    写入和删除优化

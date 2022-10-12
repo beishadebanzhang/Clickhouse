@@ -24,6 +24,9 @@
         重启服务器生效
         临时关闭(无需重启) setenforce 0(关闭状态开启只能重启服务器)
 单机安装：
+    查看是否安装: rpm qa | grep clickhouse
+    依赖：ck依赖于zk
+    推荐配置: 128g服务器 100g内存 32线程cpu -- 16核
     安装包: https://pan.baidu.com/disk/main?_at_=1664673888696#/index?category=all&path=%2F%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%2FDB%2Fclickhouse
     关键版本:
         20.5 支持final

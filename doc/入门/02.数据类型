@@ -38,7 +38,7 @@ Decimal型:
     Datetime64
         接收年-月-日 时:分:秒.亚秒
  数组:
-    Array(T):
+    Array(T): arr1 Array(String)
         由T元素组成的数组
         T可以是任意类型, 包括数组, 但ck对多维数组支持有限, 如不能再MergeTree表中存多维数组
     创建:

@@ -25,6 +25,7 @@ Update和Delete:
         rollup: 维度a、b, group by a | a,b | null
         with cube(多维分析): 维度a、b, group by a | b | a,b | null
         with total(总计): 维度a、b, group by a,b | null
+        --> select sum(visitCount) from test1 group by domainName, platformId with rollup;
 alter操作:
     新增: alter table t1 add column c1 String after c2;
     修改: alter table t1 modify column c1 String;

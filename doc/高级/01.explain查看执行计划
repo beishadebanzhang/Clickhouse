@@ -1,0 +1,17 @@
+explain查看执行计划:
+    基本语法: explain ast/syntax/plan/pipeline + sql语句
+    plan 用于查看执行计划, 默认值
+    		header 打印计划中各个步骤的head说明, 默认0关闭
+    		description 打印计划中各个步骤的描述, 默认1开启
+    		actions 打印计划中各个步骤的详细信息, 默认0关闭
+    ast 用于查看语法树
+    syntax 用于优化语法(常用)
+        打开三元运算符优化 set optimize_if_chain_to_multiif=1;
+    	explain syntax select number = 1 ? 'hello' : (number = 2 ? 'word':'atguigu') from numbers(10);
+    		--> select multiIf(number=1, 'hello', number=2, 'word', 'atguigu') from numbers(10);
+    pipeline 用于查看优化计划
+    	header 默认关闭
+    	graph 图形化展示管道图, 默认关闭
+    	actions 如果开启了graph, 紧凑打印, 默认开启
+    	比plan详细, 每步额外记录归并次数等信息(线程数)
+    老版本无explain, 直接执行语句, 然后去查看log文件
